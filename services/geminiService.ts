@@ -15,22 +15,29 @@ export const analyzeReport = async (
 Language Requirement: Use simple Bangla (সহজ বাংলা). 
 Term Formatting: Every English medical term MUST be followed by a Bangla explanation in brackets. 
 Example: "Heart Rate (হৃদস্পন্দনের গতি)".
+
 Instructions:
 - Identify if it is Blood, Heart, Imaging (CT/MRI/USG), or Endoscopy.
 - For Endoscopy: Explain ulcer, erosion, polyp, gastritis simply.
 - For Imaging: Highlight findings like lesion, mass, cyst.
 - For Blood/Heart: Explain markers and ranges.
 - DO NOT diagnose. Use words like "may indicate".
-- Structure: Summary, Key Findings, Possible Indications, Next Steps, and Disclaimer.
-- Always conclude with the mandatory disclaimer.`;
+
+MANDATORY STRUCTURE:
+You must use these exact headers for your response:
+### SUMMARY
+### KEY FINDINGS
+### EXPLANATIONS
+### RECOMMENDATIONS
+### DISCLAIMER
+
+Always conclude with the mandatory disclaimer text.`;
   
   const systemInstruction = SYSTEM_INSTRUCTIONS.replace('{{LANGUAGE}}', lang === 'en' ? 'English' : 'Bangla');
 
   try {
-    // When using generate content for text answers, use ai.models.generateContent to query GenAI with both the model name and prompt.
-    // Fix: Updated contents to follow the recommended { parts: [...] } format for multimodal input.
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview', // High intelligence for complex report analysis
+      model: 'gemini-3-pro-preview',
       contents: {
         parts: [
           { text: prompt },

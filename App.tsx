@@ -11,6 +11,7 @@ import Subscription from './components/Subscription';
 import html2pdf from 'html2pdf.js';
 
 type View = 'analysis' | 'chat' | 'live' | 'history' | 'premium';
+type DownloadStatus = 'idle' | 'preparing' | 'capturing' | 'saving' | 'error';
 
 const App: React.FC = () => {
   const [lang, setLang] = useState<Language>('en');
@@ -18,6 +19,7 @@ const App: React.FC = () => {
   const [file, setFile] = useState<ReportFile | null>(null);
   const [loading, setLoading] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle');
   const [showDownloadConfirm, setShowDownloadConfirm] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -127,7 +129,14 @@ const App: React.FC = () => {
     if (!element || isDownloading) return;
 
     setIsDownloading(true);
+    setDownloadStatus('preparing');
+    
     try {
+      // Small delay to show "preparing" status
+      await new Promise(r => setTimeout(r, 600));
+      setDownloadStatus('capturing');
+
+      // Robust check for html2pdf
       const h2p: any = (window as any).html2pdf || (html2pdf as any).default || html2pdf;
       
       if (typeof h2p !== 'function') {
@@ -138,13 +147,24 @@ const App: React.FC = () => {
         margin: [15, 15, 15, 15] as [number, number, number, number],
         filename: `MediClarify_Report_${Date.now()}.pdf`,
         image: { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas: { scale: 3, useCORS: true, letterRendering: true },
+        html2canvas: { 
+          scale: 3, 
+          useCORS: true, 
+          letterRendering: true,
+          logging: false
+        },
         jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
       };
 
-      await h2p().set(opt).from(element).save();
+      // Execute generation
+      await h2p().set(opt).from(element).toPdf().get('pdf').then((pdf: any) => {
+        setDownloadStatus('saving');
+      }).save();
+      
+      setDownloadStatus('idle');
     } catch (err: any) {
       console.error("PDF download error:", err);
+      setDownloadStatus('error');
       setError(lang === 'bn' ? "পিডিএফ ডাউনলোড করতে সমস্যা হয়েছে।" : "Could not generate PDF. Please try again.");
     } finally {
       setIsDownloading(false);
@@ -175,11 +195,49 @@ const App: React.FC = () => {
 
   const s = UI_STRINGS[lang];
 
+  const getProgressMessage = () => {
+    switch (downloadStatus) {
+      case 'preparing': return lang === 'bn' ? 'রিপোর্ট প্রস্তুত করা হচ্ছে...' : 'Preparing report...';
+      case 'capturing': return lang === 'bn' ? 'লেআউট তৈরি করা হচ্ছে...' : 'Capturing layout...';
+      case 'saving': return lang === 'bn' ? 'ফাইল সংরক্ষণ করা হচ্ছে...' : 'Saving document...';
+      default: return '';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 pb-20 transition-all duration-500">
       <Container>
+        {/* PDF Progress Overlay */}
+        {isDownloading && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-white/80 backdrop-blur-md animate-in fade-in duration-300">
+            <div className="text-center p-12 max-w-sm w-full">
+              <div className="relative mb-10 inline-block">
+                <div className="w-24 h-24 rounded-full border-4 border-slate-100 border-t-blue-600 animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <svg className="w-10 h-10 text-blue-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+              </div>
+              <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tighter">
+                {lang === 'bn' ? 'পিডিএফ তৈরি হচ্ছে' : 'Generating PDF'}
+              </h2>
+              <p className="text-blue-600 font-black text-lg animate-pulse">
+                {getProgressMessage()}
+              </p>
+              <div className="mt-8 w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                <div className={`h-full bg-blue-600 transition-all duration-700 ease-in-out ${
+                  downloadStatus === 'preparing' ? 'w-1/3' :
+                  downloadStatus === 'capturing' ? 'w-2/3' :
+                  'w-full'
+                }`}></div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Download Confirmation Modal */}
-        {showDownloadConfirm && (
+        {showDownloadConfirm && !isDownloading && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-300 border-4 border-blue-50">
               <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mb-8 mx-auto">
@@ -290,19 +348,19 @@ const App: React.FC = () => {
             ) : (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700">
                 <Card className="p-10 md:p-20 bg-white shadow-2xl overflow-visible">
-                  <div className="flex justify-between items-start mb-12 border-b-2 border-slate-50 pb-12 print:hidden">
+                  <div className="flex flex-col md:flex-row justify-between items-start gap-6 mb-12 border-b-2 border-slate-50 pb-12 print:hidden">
                     <div>
                       <h2 className="text-5xl font-black text-slate-900 mb-3 leading-none tracking-tighter">{s.resultsTitle}</h2>
                       <p className="text-slate-400 font-black text-xl uppercase tracking-widest">{file?.file.name}</p>
                     </div>
-                    <div className="flex gap-4">
-                      <button onClick={handleCopy} className="px-6 py-4 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all border-2 border-slate-100 flex items-center gap-3 text-sm font-black shadow-sm bg-white">
+                    <div className="flex gap-4 w-full md:w-auto">
+                      <button onClick={handleCopy} className="flex-1 md:flex-none px-6 py-4 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all border-2 border-slate-100 flex items-center justify-center gap-3 text-sm font-black shadow-sm bg-white">
                         {copied ? '✓ ' + s.copied : s.copy}
                       </button>
                       <button 
                         onClick={initiateDownload} 
                         disabled={isDownloading}
-                        className="px-6 py-4 bg-blue-600 text-white hover:bg-blue-700 rounded-2xl transition-all shadow-2xl shadow-blue-100 flex items-center gap-3 text-sm font-black disabled:opacity-50"
+                        className="flex-1 md:flex-none px-8 py-4 bg-blue-600 text-white hover:bg-blue-700 rounded-2xl transition-all shadow-2xl shadow-blue-100 flex items-center justify-center gap-3 text-sm font-black disabled:opacity-50"
                       >
                         {isDownloading ? (
                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
