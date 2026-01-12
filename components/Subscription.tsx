@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Language, SubscriptionStatus } from '../types';
 import { UI_STRINGS } from '../constants';
 import { Card } from './Layout';
+import { verifyTransaction } from '../services/verificationService';
 
 interface SubscriptionProps {
   lang: Language;
@@ -20,6 +21,7 @@ const Subscription: React.FC<SubscriptionProps> = ({ lang, onSuccess, status, on
   const [error, setError] = useState<string | null>(null);
   const [copiedNumber, setCopiedNumber] = useState<string | null>(null);
   const [automatedStep, setAutomatedStep] = useState(0);
+  const [verificationStage, setVerificationStage] = useState(0);
 
   const s = UI_STRINGS[lang];
 
@@ -28,6 +30,13 @@ const Subscription: React.FC<SubscriptionProps> = ({ lang, onSuccess, status, on
     { en: 'Authenticating Account...', bn: 'অ্যাকাউন্ট যাচাই করা হচ্ছে...' },
     { en: 'Processing Transaction...', bn: 'লেনদেন সম্পন্ন করা হচ্ছে...' },
     { en: 'Success! Welcome to Premium.', bn: 'সফল হয়েছে! প্রিমিয়ামে স্বাগতম।' }
+  ];
+
+  const verificationStages = [
+    { en: 'Connecting to Payment Server...', bn: 'পেমেন্ট সার্ভারের সাথে সংযুক্ত হচ্ছে...' },
+    { en: 'Searching for Transaction ID...', bn: 'ট্রানজেকশন আইডি খোঁজা হচ্ছে...' },
+    { en: 'Validating Amount & Sender...', bn: 'টাকার পরিমাণ এবং প্রেরক যাচাই করা হচ্ছে...' },
+    { en: 'Finalizing Account Upgrade...', bn: 'অ্যাকাউন্ট আপগ্রেড সম্পন্ন হচ্ছে...' }
   ];
 
   const handleStartCheckout = (plan: 'monthly' | 'yearly') => {
@@ -56,20 +65,33 @@ const Subscription: React.FC<SubscriptionProps> = ({ lang, onSuccess, status, on
 
   const handleManualVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (trxId.length < 6) {
-      setError(s.invalidTrx);
+    if (!trxId.trim()) {
+      setError(lang === 'bn' ? 'ট্রানজেকশন আইডি দিন' : 'Enter Transaction ID');
       return;
     }
 
     setError(null);
     setView('verifying');
-    
-    await new Promise(resolve => setTimeout(resolve, 2500));
-    
-    if (trxId.length >= 8) {
-      onSuccess(selectedPlan || 'monthly');
-    } else {
-      setError(s.invalidTrx);
+    setVerificationStage(0);
+
+    // Simulated multi-stage progress for realism
+    const progressInterval = setInterval(() => {
+      setVerificationStage(prev => (prev < 3 ? prev + 1 : prev));
+    }, 800);
+
+    try {
+      const result = await verifyTransaction(trxId);
+      clearInterval(progressInterval);
+      
+      if (result.success) {
+        onSuccess(result.plan || 'monthly');
+      } else {
+        setError(lang === 'bn' ? result.message.bn : result.message.en);
+        setView('selection');
+      }
+    } catch (err) {
+      clearInterval(progressInterval);
+      setError(lang === 'bn' ? 'ভেরিফিকেশন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।' : 'Verification failed. Try again.');
       setView('selection');
     }
   };
@@ -189,7 +211,6 @@ const Subscription: React.FC<SubscriptionProps> = ({ lang, onSuccess, status, on
               </button>
             </div>
 
-            {/* Payment Method Tabs */}
             <div className="flex p-2 bg-slate-50 mx-8 mt-6 rounded-2xl border border-slate-100">
               <button 
                 onClick={() => setMethod('card')}
@@ -256,9 +277,6 @@ const Subscription: React.FC<SubscriptionProps> = ({ lang, onSuccess, status, on
                         </div>
                       </div>
                     </div>
-                    <p className="text-xs text-slate-400 font-bold px-1">
-                      {lang === 'bn' ? '* পেমেন্ট সম্পন্ন করতে আপনার ওয়ালেটে যথেষ্ট ব্যালেন্স থাকতে হবে।' : '* Ensure sufficient balance in your mobile wallet to complete payment.'}
-                    </p>
                   </div>
                 )}
                 
@@ -277,7 +295,7 @@ const Subscription: React.FC<SubscriptionProps> = ({ lang, onSuccess, status, on
         </div>
       )}
 
-      {/* Processing Animation View */}
+      {/* Processing Animation View (Automated) */}
       {view === 'automated' && (
         <div className="fixed inset-0 z-[110] bg-white/95 backdrop-blur-xl flex items-center justify-center p-6 animate-in fade-in duration-300">
           <div className="max-w-sm w-full text-center">
@@ -304,161 +322,148 @@ const Subscription: React.FC<SubscriptionProps> = ({ lang, onSuccess, status, on
         </div>
       )}
 
-      {/* Manual Verification View */}
+      {/* Backend Verification View (Manual) */}
       {view === 'verifying' && (
         <div className="fixed inset-0 z-[110] bg-slate-900/95 backdrop-blur-xl flex items-center justify-center p-6 animate-in fade-in duration-300">
-          <div className="max-w-md w-full p-12 text-center bg-white rounded-[3rem] shadow-2xl">
-            <div className="w-20 h-20 bg-slate-900 text-white rounded-3xl mx-auto mb-8 flex items-center justify-center animate-pulse">
-              <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+          <div className="max-w-md w-full p-12 text-center bg-white rounded-[3rem] shadow-2xl overflow-hidden relative">
+            <div className="absolute top-0 left-0 w-full h-2 bg-slate-100">
+              <div 
+                className="h-full bg-blue-600 transition-all duration-500 ease-out"
+                style={{ width: `${((verificationStage + 1) / verificationStages.length) * 100}%` }}
+              ></div>
             </div>
-            <h3 className="text-3xl font-black text-slate-900 mb-2">{s.verifying}</h3>
-            <p className="text-slate-400 font-bold mb-8">Matching Transaction ID with internal records...</p>
+            <div className="w-24 h-24 bg-blue-50 text-blue-600 rounded-[2rem] mx-auto mb-8 flex items-center justify-center animate-pulse">
+              <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+            </div>
+            <h3 className="text-2xl font-black text-slate-900 mb-2">
+              {lang === 'bn' ? verificationStages[verificationStage].bn : verificationStages[verificationStage].en}
+            </h3>
+            <p className="text-slate-400 font-bold mb-8">
+              {lang === 'bn' ? 'সার্ভার থেকে তথ্য সংগ্রহ করা হচ্ছে...' : 'Fetching data from secure payment node...'}
+            </p>
             <div className="flex justify-center gap-2">
-              <div className="w-3 h-3 bg-slate-900 rounded-full animate-bounce"></div>
-              <div className="w-3 h-3 bg-slate-900 rounded-full animate-bounce [animation-delay:-0.1s]"></div>
-              <div className="w-3 h-3 bg-slate-900 rounded-full animate-bounce [animation-delay:-0.2s]"></div>
+              <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce"></div>
+              <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.1s]"></div>
+              <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce [animation-delay:-0.2s]"></div>
             </div>
           </div>
         </div>
       )}
 
-      <div className="text-center max-w-2xl mx-auto">
-        <h2 className="text-5xl font-black text-slate-900 tracking-tighter mb-4">{s.pricingTitle}</h2>
-        <p className="text-slate-500 text-xl font-medium leading-relaxed">
-          {lang === 'bn' 
-            ? 'গভীর বিশ্লেষণ এবং সীমাহীন এআই সুবিধার জন্য আজই প্রিমিয়ামে যোগ দিন।' 
-            : 'Get deep insights and unlimited AI features with MediClarify Premium.'}
-        </p>
-      </div>
+      {/* Manual Channels Section */}
+      {view === 'selection' && (
+        <>
+          <div className="text-center max-w-2xl mx-auto">
+            <h2 className="text-5xl font-black text-slate-900 tracking-tighter mb-4">{s.pricingTitle}</h2>
+            <p className="text-slate-500 text-xl font-medium leading-relaxed">
+              {lang === 'bn' 
+                ? 'গভীর বিশ্লেষণ এবং সীমাহীন এআই সুবিধার জন্য আজই প্রিমিয়ামে যোগ দিন।' 
+                : 'Get deep insights and unlimited AI features with MediClarify Premium.'}
+            </p>
+          </div>
 
-      <div className="grid md:grid-cols-2 gap-10">
-        <Card className="p-10 border-2 transition-all flex flex-col justify-between group bg-white shadow-xl hover:border-blue-400 hover:shadow-blue-50">
-          <div>
-            <div className="flex justify-between items-start mb-6">
-              <h3 className="text-3xl font-black text-slate-900">{s.monthly}</h3>
-              <span className="bg-slate-100 text-slate-600 text-xs font-black px-4 py-1.5 rounded-full uppercase tracking-widest">Standard</span>
+          <div className="grid md:grid-cols-2 gap-10">
+            <Card className="p-10 border-2 transition-all flex flex-col justify-between group bg-white shadow-xl hover:border-blue-400">
+              <div>
+                <div className="flex justify-between items-start mb-6">
+                  <h3 className="text-3xl font-black text-slate-900">{s.monthly}</h3>
+                </div>
+                <p className="text-6xl font-black text-blue-600 mb-10">{s.priceMonthly}</p>
+              </div>
+              <button onClick={() => handleStartCheckout('monthly')} className="w-full py-6 bg-slate-900 text-white font-black text-xl rounded-2xl hover:bg-blue-600 transition-all">{s.subscribe}</button>
+            </Card>
+            <Card className="p-10 border-4 border-blue-600 relative overflow-hidden flex flex-col justify-between group bg-white shadow-2xl scale-[1.02]">
+              <div className="absolute top-8 right-[-45px] bg-blue-600 text-white text-[12px] font-black px-14 py-2 rotate-45 shadow-lg uppercase">Best Value</div>
+              <div>
+                <div className="flex justify-between items-start mb-6">
+                  <h3 className="text-3xl font-black text-slate-900">{s.yearly}</h3>
+                </div>
+                <p className="text-6xl font-black text-blue-600 mb-10">{s.priceYearly}</p>
+              </div>
+              <button onClick={() => handleStartCheckout('yearly')} className="w-full py-6 bg-blue-600 text-white font-black text-xl rounded-2xl hover:bg-blue-700 transition-all">{s.subscribe}</button>
+            </Card>
+          </div>
+
+          <div className="pt-12">
+            <div className="bg-white rounded-[3rem] p-12 border-2 border-slate-100 shadow-2xl relative">
+              <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-8 py-3 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl border-4 border-white flex items-center gap-2">
+                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                {s.manualTitle}
+              </div>
+              
+              <div className="text-center mb-10 mt-6">
+                <h4 className="text-4xl font-black text-slate-900 mb-3 tracking-tight">
+                  {lang === 'bn' ? 'অফিসিয়াল পেমেন্ট চ্যানেল' : 'Official Payment Channels'}
+                </h4>
+                <p className="text-slate-500 font-bold text-xl">
+                  {lang === 'bn' 
+                    ? 'নিচের বিকাশ বা নগদ নাম্বারে টাকা পাঠিয়ে আপনার ট্রানজেকশন আইডি সাবমিট করুন।' 
+                    : 'Send money to our verified accounts and submit your Transaction ID below.'}
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-5xl mx-auto mb-16">
+                {/* bKash Card */}
+                <button 
+                  onClick={() => copyToClipboard('01767515374')}
+                  className="w-full bg-white p-12 rounded-[3rem] border-4 border-pink-50 shadow-2xl flex flex-col items-center text-center group hover:border-pink-500 transition-all relative overflow-hidden active:scale-[0.98]"
+                >
+                  <div className="absolute top-6 left-6 flex items-center gap-1.5 bg-pink-50 px-4 py-1.5 rounded-full border border-pink-100">
+                    <svg className="w-4 h-4 text-pink-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                    <span className="text-[10px] font-black text-pink-500 uppercase tracking-widest">Verified</span>
+                  </div>
+                  <div className="w-24 h-24 bg-pink-500 rounded-[2rem] flex items-center justify-center shadow-2xl shadow-pink-200 mb-8 group-hover:rotate-6 transition-transform">
+                    <span className="text-white font-black text-xl">bKash</span>
+                  </div>
+                  <p className="text-xs text-slate-400 font-black uppercase tracking-[0.3em] mb-2">Personal Account</p>
+                  <p className="text-5xl font-black text-pink-600 tabular-nums tracking-tighter mb-6">01767515374</p>
+                  <div className={`px-10 py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-sm ${copiedNumber === '01767515374' ? 'bg-green-100 text-green-600 border-2 border-green-200' : 'bg-slate-100 text-slate-500 border-2 border-slate-200 group-hover:bg-pink-50 group-hover:text-pink-500'}`}>
+                    {copiedNumber === '01767515374' ? '✓ Copied' : 'Click to Copy'}
+                  </div>
+                </button>
+
+                {/* Nagad Card */}
+                <button 
+                  onClick={() => copyToClipboard('01831814494')}
+                  className="w-full bg-white p-12 rounded-[3rem] border-4 border-orange-50 shadow-2xl flex flex-col items-center text-center group hover:border-orange-500 transition-all relative overflow-hidden active:scale-[0.98]"
+                >
+                  <div className="absolute top-6 left-6 flex items-center gap-1.5 bg-orange-50 px-4 py-1.5 rounded-full border border-orange-100">
+                    <svg className="w-4 h-4 text-orange-600" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                    <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest">Verified</span>
+                  </div>
+                  <div className="w-24 h-24 bg-orange-600 rounded-[2rem] flex items-center justify-center shadow-2xl shadow-orange-200 mb-8 group-hover:-rotate-6 transition-transform">
+                    <span className="text-white font-black text-xl">Nagad</span>
+                  </div>
+                  <p className="text-xs text-slate-400 font-black uppercase tracking-[0.3em] mb-2">Personal Account</p>
+                  <p className="text-5xl font-black text-orange-600 tabular-nums tracking-tighter mb-6">01831814494</p>
+                  <div className={`px-10 py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-sm ${copiedNumber === '01831814494' ? 'bg-green-100 text-green-600 border-2 border-green-200' : 'bg-slate-100 text-slate-500 border-2 border-slate-200 group-hover:bg-orange-50 group-hover:text-orange-600'}`}>
+                    {copiedNumber === '01831814494' ? '✓ Copied' : 'Click to Copy'}
+                  </div>
+                </button>
+              </div>
+
+              <div className="bg-slate-50 p-12 rounded-[3.5rem] border-2 border-white shadow-inner max-w-5xl mx-auto">
+                <h5 className="text-3xl font-black text-slate-900 mb-10 flex items-center justify-center gap-4">{s.stepGuide}</h5>
+                
+                <form onSubmit={handleManualVerify} className="max-w-md mx-auto space-y-6">
+                  <input
+                    type="text"
+                    value={trxId}
+                    onChange={(e) => setTrxId(e.target.value.toUpperCase())}
+                    placeholder={s.verifyPlaceholder}
+                    className="w-full px-8 py-6 rounded-[2rem] border-4 border-slate-100 focus:border-blue-600 focus:outline-none text-xl font-black tabular-nums transition-all bg-white shadow-sm"
+                    required
+                  />
+                  {error && <p className="text-red-600 font-black text-center animate-bounce">{error}</p>}
+                  <button type="submit" className="w-full py-6 bg-slate-900 text-white font-black text-2xl rounded-[2.5rem] hover:bg-blue-600 shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-4">
+                    {s.verifyBtn}
+                  </button>
+                </form>
+              </div>
             </div>
-            <p className="text-6xl font-black text-blue-600 mb-10 tracking-tighter">{s.priceMonthly}</p>
-            <ul className="space-y-5 mb-12 text-slate-600 font-bold text-lg">
-              <li className="flex items-center gap-4">
-                <div className="w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-[10px] font-black">✓</div>
-                Unlimited Analysis
-              </li>
-              <li className="flex items-center gap-4">
-                <div className="w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-[10px] font-black">✓</div>
-                Chat Memory Enabled
-              </li>
-            </ul>
           </div>
-          <button
-            onClick={() => handleStartCheckout('monthly')}
-            className="w-full py-6 bg-slate-900 text-white font-black text-xl rounded-2xl hover:bg-blue-600 shadow-2xl transition-all active:scale-[0.98]"
-          >
-            {s.subscribe}
-          </button>
-        </Card>
-
-        <Card className="p-10 border-4 border-blue-600 relative overflow-hidden flex flex-col justify-between shadow-2xl shadow-blue-100 bg-white scale-[1.02]">
-          <div className="absolute top-8 right-[-45px] bg-blue-600 text-white text-[12px] font-black px-14 py-2 rotate-45 shadow-lg uppercase tracking-widest">Best Value</div>
-          <div>
-            <div className="flex justify-between items-start mb-6">
-              <h3 className="text-3xl font-black text-slate-900">{s.yearly}</h3>
-              <span className="bg-blue-100 text-blue-600 text-xs font-black px-4 py-1.5 rounded-full uppercase tracking-widest">Annual</span>
-            </div>
-            <p className="text-6xl font-black text-blue-600 mb-10 tracking-tighter">{s.priceYearly}</p>
-            <ul className="space-y-5 mb-12 text-slate-700 font-black text-lg">
-              <li className="flex items-center gap-4">
-                <div className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-[10px] font-black">✓</div>
-                Save 15% Annually
-              </li>
-              <li className="flex items-center gap-4">
-                <div className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-[10px] font-black">✓</div>
-                Priority Support Access
-              </li>
-            </ul>
-          </div>
-          <button
-            onClick={() => handleStartCheckout('yearly')}
-            className="w-full py-6 bg-blue-600 text-white font-black text-xl rounded-2xl hover:bg-blue-700 shadow-2xl shadow-blue-200 transition-all active:scale-[0.97]"
-          >
-            {s.subscribe}
-          </button>
-        </Card>
-      </div>
-
-      <div className="pt-12">
-        <div className="bg-white rounded-[3rem] p-12 border-2 border-slate-100 shadow-2xl relative">
-          <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-8 py-3 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl border-4 border-white flex items-center gap-2">
-            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-            {s.manualTitle}
-          </div>
-          
-          <div className="text-center mb-10 mt-6">
-            <h4 className="text-4xl font-black text-slate-900 mb-3 tracking-tight">
-              {lang === 'bn' ? 'সরাসরি সাবস্ক্রাইব করুন' : 'Direct Manual Subscription'}
-            </h4>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-5xl mx-auto mb-16">
-            {/* bKash Verified Card */}
-            <button 
-              onClick={() => copyToClipboard('01767515374')}
-              className="w-full bg-white p-12 rounded-[3rem] border-4 border-pink-50 shadow-2xl flex flex-col items-center text-center group hover:border-pink-500 transition-all relative overflow-hidden active:scale-[0.98]"
-            >
-              <div className="absolute top-6 left-6 flex items-center gap-1.5 bg-pink-50 px-4 py-1.5 rounded-full border border-pink-100">
-                <svg className="w-4 h-4 text-pink-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                <span className="text-[10px] font-black text-pink-500 uppercase tracking-widest">Verified Merchant</span>
-              </div>
-              <div className="w-24 h-24 bg-pink-500 rounded-[2rem] flex items-center justify-center shadow-2xl shadow-pink-200 mb-8 group-hover:rotate-6 transition-transform">
-                <span className="text-white font-black text-xl">bKash</span>
-              </div>
-              <p className="text-xs text-slate-400 font-black uppercase tracking-[0.3em] mb-2">Personal Account (Official)</p>
-              <p className="text-5xl font-black text-pink-600 tabular-nums tracking-tighter mb-6">01767515374</p>
-              <div className={`px-10 py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-sm ${copiedNumber === '01767515374' ? 'bg-green-100 text-green-600 border-2 border-green-200' : 'bg-slate-100 text-slate-500 border-2 border-slate-200 group-hover:bg-pink-50 group-hover:text-pink-500 group-hover:border-pink-200'}`}>
-                {copiedNumber === '01767515374' ? '✓ Number Copied' : 'Click to Copy Number'}
-              </div>
-            </button>
-
-            {/* Nagad Verified Card */}
-            <button 
-              onClick={() => copyToClipboard('01831814494')}
-              className="w-full bg-white p-12 rounded-[3rem] border-4 border-orange-50 shadow-2xl flex flex-col items-center text-center group hover:border-orange-500 transition-all relative overflow-hidden active:scale-[0.98]"
-            >
-              <div className="absolute top-6 left-6 flex items-center gap-1.5 bg-orange-50 px-4 py-1.5 rounded-full border border-orange-100">
-                <svg className="w-4 h-4 text-orange-600" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest">Verified Merchant</span>
-              </div>
-              <div className="w-24 h-24 bg-orange-600 rounded-[2rem] flex items-center justify-center shadow-2xl shadow-orange-200 mb-8 group-hover:-rotate-6 transition-transform">
-                <span className="text-white font-black text-xl">Nagad</span>
-              </div>
-              <p className="text-xs text-slate-400 font-black uppercase tracking-[0.3em] mb-2">Personal Account (Official)</p>
-              <p className="text-5xl font-black text-orange-600 tabular-nums tracking-tighter mb-601831814494">01831814494</p>
-              <div className={`px-10 py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-sm ${copiedNumber === '01831814494' ? 'bg-green-100 text-green-600 border-2 border-green-200' : 'bg-slate-100 text-slate-500 border-2 border-slate-200 group-hover:bg-orange-50 group-hover:text-orange-600 group-hover:border-orange-200'}`}>
-                {copiedNumber === '01831814494' ? '✓ Number Copied' : 'Click to Copy Number'}
-              </div>
-            </button>
-          </div>
-
-          <div className="bg-slate-50 p-12 rounded-[3.5rem] border-2 border-white shadow-inner max-w-5xl mx-auto">
-            <h5 className="text-3xl font-black text-slate-900 mb-10 flex items-center justify-center gap-4">{s.stepGuide}</h5>
-            
-            <form onSubmit={handleManualVerify} className="max-w-md mx-auto space-y-6">
-              <input
-                type="text"
-                value={trxId}
-                onChange={(e) => setTrxId(e.target.value.toUpperCase())}
-                placeholder={s.verifyPlaceholder}
-                className="w-full px-8 py-6 rounded-[2rem] border-4 border-slate-100 focus:border-blue-600 focus:outline-none text-xl font-black tabular-nums transition-all bg-white shadow-sm"
-                required
-              />
-              {error && <p className="text-red-600 font-black text-center animate-bounce">{error}</p>}
-              <button type="submit" className="w-full py-6 bg-slate-900 text-white font-black text-2xl rounded-[2.5rem] hover:bg-blue-600 shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-4">
-                {s.verifyBtn}
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 };
