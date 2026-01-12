@@ -25,3 +25,9 @@ export interface HistoryItem {
   result: string;
   preview: string;
 }
+
+export interface SubscriptionStatus {
+  isPremium: boolean;
+  plan?: 'monthly' | 'yearly';
+  expiryDate?: string;
+}
