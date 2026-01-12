@@ -8,6 +8,7 @@ import { analyzeReport } from './services/geminiService';
 import ChatBot from './components/ChatBot';
 import LiveAudio from './components/LiveAudio';
 import Subscription from './components/Subscription';
+import html2pdf from 'html2pdf.js';
 
 type View = 'analysis' | 'chat' | 'live' | 'history' | 'premium';
 
@@ -16,13 +17,14 @@ const App: React.FC = () => {
   const [view, setView] = useState<View>('analysis');
   const [file, setFile] = useState<ReportFile | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [showDownloadConfirm, setShowDownloadConfirm] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [subStatus, setSubStatus] = useState<SubscriptionStatus>({ isPremium: false });
 
-  // Load state from local storage on mount
   useEffect(() => {
     const savedHistory = localStorage.getItem('mediClarifyHistory');
     if (savedHistory) setHistory(JSON.parse(savedHistory));
@@ -30,13 +32,10 @@ const App: React.FC = () => {
     const savedSub = localStorage.getItem('mediClarifySubscription');
     if (savedSub) setSubStatus(JSON.parse(savedSub));
 
-    // Handle payment success callback from your FastAPI backend redirect logic
-    // This handles the transition from payment gateway -> backend -> frontend success URL
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('payment_status') === 'success') {
       const plan = (urlParams.get('plan') as 'monthly' | 'yearly') || 'monthly';
       handleSubscriptionSuccess(plan);
-      // Clean up URL for professional UX
       window.history.replaceState({}, document.title, "/");
       setView('premium');
     }
@@ -62,7 +61,6 @@ const App: React.FC = () => {
   };
 
   const performAnalysis = async () => {
-    // Free User Limit: 2 Reports (as per instructions for monetization)
     if (!subStatus.isPremium && history.length >= 2) {
       setError(UI_STRINGS[lang].limitReached);
       setView('premium');
@@ -97,7 +95,6 @@ const App: React.FC = () => {
   };
 
   const handleSubscriptionSuccess = (plan: 'monthly' | 'yearly') => {
-    // Expiry logic matching your Python backend (30 vs 365 days)
     const daysToAdd = plan === 'yearly' ? 365 : 30;
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + daysToAdd);
@@ -120,8 +117,38 @@ const App: React.FC = () => {
     }
   };
 
-  const handleDownloadPDF = () => {
-    window.print();
+  const initiateDownload = () => {
+    setShowDownloadConfirm(true);
+  };
+
+  const handleDownloadPDF = async () => {
+    setShowDownloadConfirm(false);
+    const element = document.getElementById('report-content');
+    if (!element || isDownloading) return;
+
+    setIsDownloading(true);
+    try {
+      const h2p: any = (window as any).html2pdf || (html2pdf as any).default || html2pdf;
+      
+      if (typeof h2p !== 'function') {
+        throw new Error("html2pdf library could not be initialized.");
+      }
+
+      const opt = {
+        margin: [15, 15, 15, 15] as [number, number, number, number],
+        filename: `MediClarify_Report_${Date.now()}.pdf`,
+        image: { type: 'jpeg' as const, quality: 0.98 },
+        html2canvas: { scale: 3, useCORS: true, letterRendering: true },
+        jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
+      };
+
+      await h2p().set(opt).from(element).save();
+    } catch (err: any) {
+      console.error("PDF download error:", err);
+      setError(lang === 'bn' ? "পিডিএফ ডাউনলোড করতে সমস্যা হয়েছে।" : "Could not generate PDF. Please try again.");
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   const handleReset = () => {
@@ -149,12 +176,46 @@ const App: React.FC = () => {
   const s = UI_STRINGS[lang];
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20 print:bg-white transition-all duration-500">
+    <div className="min-h-screen bg-slate-50 pb-20 transition-all duration-500">
       <Container>
+        {/* Download Confirmation Modal */}
+        {showDownloadConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+            <div className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-300 border-4 border-blue-50">
+              <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mb-8 mx-auto">
+                <svg className="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <h3 className="text-3xl font-black text-slate-900 text-center mb-4 tracking-tight">
+                {lang === 'bn' ? 'পিডিএফ ডাউনলোড নিশ্চিত করুন' : 'Confirm PDF Download'}
+              </h3>
+              <p className="text-slate-500 text-center font-bold text-lg leading-relaxed mb-10 px-4">
+                {lang === 'bn' 
+                  ? 'আপনার রিপোর্টের সারসংক্ষেপ, ফলাফল এবং ব্যাখ্যাসহ একটি প্রফেশনাল পিডিএফ ফাইল তৈরি করা হবে।' 
+                  : 'A professional PDF including summary, findings, and explanations will be generated.'}
+              </p>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setShowDownloadConfirm(false)}
+                  className="flex-1 py-5 bg-slate-100 text-slate-600 font-black text-xl rounded-2xl hover:bg-slate-200 transition-all active:scale-[0.97]"
+                >
+                  {lang === 'bn' ? 'বাতিল' : 'Cancel'}
+                </button>
+                <button
+                  onClick={handleDownloadPDF}
+                  className="flex-1 py-5 bg-blue-600 text-white font-black text-xl rounded-2xl hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all active:scale-[0.97]"
+                >
+                  {lang === 'bn' ? 'ডাউনলোড' : 'Download'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="print:hidden">
           <Header lang={lang} onToggleLang={toggleLanguage} />
           
-          {/* Main Navigation with Premium Indicator */}
           <div className="flex gap-2 mb-10 bg-slate-200/40 p-1.5 rounded-3xl overflow-x-auto no-scrollbar w-full shadow-inner border border-slate-200/50">
             {(['analysis', 'chat', 'live', 'history', 'premium'] as View[]).map((v) => (
               <button
@@ -228,43 +289,79 @@ const App: React.FC = () => {
               </Card>
             ) : (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700">
-                <Card className="p-10 md:p-20 print:border-none print:shadow-none print:p-0 bg-white shadow-2xl">
-                  <div className="flex justify-between items-start mb-12 border-b-2 border-slate-50 pb-12 print:mb-16">
+                <Card className="p-10 md:p-20 bg-white shadow-2xl overflow-visible">
+                  <div className="flex justify-between items-start mb-12 border-b-2 border-slate-50 pb-12 print:hidden">
                     <div>
                       <h2 className="text-5xl font-black text-slate-900 mb-3 leading-none tracking-tighter">{s.resultsTitle}</h2>
                       <p className="text-slate-400 font-black text-xl uppercase tracking-widest">{file?.file.name}</p>
                     </div>
-                    <div className="flex gap-4 print:hidden">
+                    <div className="flex gap-4">
                       <button onClick={handleCopy} className="px-6 py-4 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all border-2 border-slate-100 flex items-center gap-3 text-sm font-black shadow-sm bg-white">
                         {copied ? '✓ ' + s.copied : s.copy}
                       </button>
-                      <button onClick={handleDownloadPDF} className="px-6 py-4 bg-blue-600 text-white hover:bg-blue-700 rounded-2xl transition-all shadow-2xl shadow-blue-100 flex items-center gap-3 text-sm font-black">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        {s.download}
+                      <button 
+                        onClick={initiateDownload} 
+                        disabled={isDownloading}
+                        className="px-6 py-4 bg-blue-600 text-white hover:bg-blue-700 rounded-2xl transition-all shadow-2xl shadow-blue-100 flex items-center gap-3 text-sm font-black disabled:opacity-50"
+                      >
+                        {isDownloading ? (
+                           <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        ) : (
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        )}
+                        {isDownloading ? (lang === 'bn' ? 'তৈরি হচ্ছে...' : 'Generating...') : s.download}
                       </button>
                     </div>
                   </div>
 
-                  <div className="prose prose-slate max-w-none text-slate-800 text-2xl font-medium leading-relaxed tracking-tight space-y-8">
-                    {result.split('\n').map((line, i) => (
-                      <p key={i} className="mb-0">
-                        {line}
-                      </p>
-                    ))}
-                  </div>
-
-                  <div className="mt-20 pt-16 border-t-4 border-blue-50 bg-blue-50/20 p-12 rounded-[2.5rem] border-dashed relative">
-                    <div className="absolute -top-10 left-12 w-20 h-20 bg-blue-600 text-white rounded-3xl flex items-center justify-center shadow-2xl shadow-blue-100 transform rotate-[-4deg]">
-                      <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
+                  <div id="report-content" className="bg-white">
+                    {/* Header - Only visible in PDF/Print */}
+                    <div className="hidden print:block border-b-8 border-blue-600 pb-10 mb-10">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-4">
+                           <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center">
+                              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                           </div>
+                           <div>
+                              <h1 className="text-4xl font-black text-slate-900 leading-none">MediClarify</h1>
+                              <p className="text-blue-600 font-bold uppercase tracking-[0.2em] text-[10px] mt-1">Medical Report Assistant</p>
+                           </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-slate-900 font-black text-lg">{new Date().toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Analysis Reference: {Math.random().toString(36).substr(2, 9).toUpperCase()}</p>
+                        </div>
+                      </div>
                     </div>
-                    <h4 className="text-blue-900 font-black mb-6 text-3xl tracking-tighter pt-4">
-                      {s.disclaimerTitle}
-                    </h4>
-                    <p className="text-blue-900/80 leading-relaxed font-bold text-xl">{s.disclaimerText}</p>
+
+                    <div className="prose prose-slate max-w-none space-y-8">
+                      {result.split('###').filter(s => s.trim()).map((section, idx) => {
+                        const lines = section.split('\n').filter(l => l.trim());
+                        if (lines.length === 0) return null;
+                        
+                        const title = lines[0];
+                        const contentLines = lines.slice(1);
+                        const isDisclaimer = title.toLowerCase().includes('disclaimer') || title.toLowerCase().includes('সতর্কতা');
+                        
+                        return (
+                          <div key={idx} className={`rounded-3xl ${isDisclaimer ? 'bg-slate-50 border-2 border-slate-100 p-8 mt-12' : 'mb-8'}`}>
+                            <h3 className={`text-3xl font-black mb-4 flex items-center gap-3 ${isDisclaimer ? 'text-slate-700' : 'text-blue-800'}`}>
+                              {!isDisclaimer && <span className="w-2 h-8 bg-blue-600 rounded-full"></span>}
+                              {title.trim()}
+                            </h3>
+                            <div className={`text-2xl font-medium leading-relaxed ${isDisclaimer ? 'text-slate-500 text-xl' : 'text-slate-800'}`}>
+                              {contentLines.map((line, lIdx) => (
+                                <p key={lIdx} className="mb-4">{line.trim()}</p>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   <div className="mt-16 flex gap-6 print:hidden">
@@ -302,11 +399,10 @@ const App: React.FC = () => {
                   </svg>
                 </div>
                 <p className="text-3xl font-black">{s.emptyHistory}</p>
-                <p className="mt-4 font-bold text-slate-400">Reports analyzed by MediClarify will be stored here.</p>
               </Card>
             ) : (
               history.map((item) => (
-                <Card key={item.id} className="p-8 flex items-center gap-10 hover:border-blue-500 hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] transition-all group relative overflow-hidden bg-white rounded-3xl border-2 border-slate-50">
+                <Card key={item.id} className="p-8 flex items-center gap-10 hover:border-blue-500 hover:shadow-xl transition-all group relative overflow-hidden bg-white rounded-3xl border-2 border-slate-50">
                   <div className="w-32 h-32 rounded-3xl overflow-hidden border-8 border-slate-50 shadow-2xl flex-shrink-0 bg-slate-100">
                     <img src={item.preview} alt="Report" className="w-full h-full object-cover group-hover:scale-125 transition-transform duration-1000" />
                   </div>

@@ -17,16 +17,9 @@ const Subscription: React.FC<SubscriptionProps> = ({ lang, onSuccess, status }) 
   const handleSubscribe = async (plan: 'monthly' | 'yearly') => {
     setProcessing(true);
     
-    // In a production environment, this triggers a fetch to your FastAPI backend:
-    // const response = await fetch('/api/initiate-payment', { method: 'POST', body: JSON.stringify({ plan }) });
-    // const data = await response.json();
-    // window.location.href = data.payment_url; (This matches your Android Intent/Python request flow)
-
     try {
-      // Simulating the backend request and redirection delay
+      // Simulating backend payment gateway delay
       await new Promise(resolve => setTimeout(resolve, 2500));
-      
-      // For this demo, we bypass the external redirect and trigger success
       onSuccess(plan);
     } catch (error) {
       console.error("Payment initialization failed", error);
@@ -84,7 +77,6 @@ const Subscription: React.FC<SubscriptionProps> = ({ lang, onSuccess, status }) 
         </Card>
       ) : (
         <div className="grid md:grid-cols-2 gap-10">
-          {/* Monthly */}
           <Card className="p-10 border-2 border-slate-100 hover:border-blue-400 transition-all flex flex-col justify-between group bg-white shadow-xl hover:shadow-blue-50">
             <div>
               <div className="flex justify-between items-start mb-6">
@@ -101,10 +93,6 @@ const Subscription: React.FC<SubscriptionProps> = ({ lang, onSuccess, status }) 
                   <div className="w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-[10px] font-black">✓</div>
                   24/7 Medical Info Chat
                 </li>
-                <li className="flex items-center gap-4">
-                  <div className="w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-[10px] font-black">✓</div>
-                  Full History Access
-                </li>
               </ul>
             </div>
             <button
@@ -115,7 +103,6 @@ const Subscription: React.FC<SubscriptionProps> = ({ lang, onSuccess, status }) 
             </button>
           </Card>
 
-          {/* Yearly */}
           <Card className="p-10 border-4 border-blue-600 relative overflow-hidden flex flex-col justify-between shadow-2xl shadow-blue-100 bg-white scale-[1.02]">
             <div className="absolute top-8 right-[-45px] bg-blue-600 text-white text-[12px] font-black px-14 py-2 rotate-45 shadow-lg uppercase tracking-widest">Popular</div>
             <div>
@@ -133,15 +120,11 @@ const Subscription: React.FC<SubscriptionProps> = ({ lang, onSuccess, status }) 
                   <div className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-[10px] font-black">✓</div>
                   Advanced Voice AI Access
                 </li>
-                <li className="flex items-center gap-4">
-                  <div className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-[10px] font-black">✓</div>
-                  Direct PDF Generation
-                </li>
               </ul>
             </div>
             <button
               onClick={() => handleSubscribe('yearly')}
-              className="w-full py-6 bg-blue-600 text-white font-black text-xl rounded-2xl hover:bg-blue-700 shadow-2xl shadow-blue-200 transition-all active:scale-[0.98]"
+              className="w-full py-6 bg-blue-600 text-white font-black text-xl rounded-2xl hover:bg-blue-700 shadow-2xl shadow-blue-200 transition-all active:scale-[0.97]"
             >
               {s.subscribe}
             </button>
@@ -149,25 +132,40 @@ const Subscription: React.FC<SubscriptionProps> = ({ lang, onSuccess, status }) 
         </div>
       )}
 
-      {/* Footer Branding */}
+      {/* Official Payment Channels Section */}
       <div className="pt-16 border-t-2 border-slate-100 border-dashed">
-        <p className="text-center text-slate-400 font-black text-xs mb-10 uppercase tracking-[0.3em]">Authorized Payment via aamarPay</p>
-        <div className="flex justify-center items-center gap-12 opacity-80 transition-all flex-wrap px-8">
-          <div className="flex items-center gap-2">
-             <div className="w-4 h-4 rounded-full bg-pink-500 shadow-sm shadow-pink-200"></div>
-             <span className="font-black text-2xl text-pink-600 tracking-tighter">bKash</span>
+        <p className="text-center text-slate-400 font-black text-xs mb-10 uppercase tracking-[0.3em]">Official Payment Channels</p>
+        <div className="flex justify-center items-center gap-6 md:gap-12 opacity-90 transition-all flex-wrap px-8">
+          
+          {/* bKash */}
+          <div className="bg-white p-4 rounded-3xl border-2 border-pink-50 shadow-sm flex items-center gap-4 group hover:border-pink-200 transition-all">
+             <div className="w-12 h-12 bg-pink-500 rounded-2xl flex items-center justify-center shadow-lg shadow-pink-100">
+                <span className="text-white font-black text-xs">bKash</span>
+             </div>
+             <div className="pr-4">
+                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Personal</p>
+                <p className="text-xl font-black text-pink-600 tabular-nums">01767515374</p>
+             </div>
           </div>
-          <div className="flex items-center gap-2">
-             <div className="w-4 h-4 rounded-full bg-orange-500 shadow-sm shadow-orange-200"></div>
-             <span className="font-black text-2xl text-orange-600 tracking-tighter">Nagad</span>
+
+          {/* Nagad */}
+          <div className="bg-white p-4 rounded-3xl border-2 border-orange-50 shadow-sm flex items-center gap-4 group hover:border-orange-200 transition-all">
+             <div className="w-12 h-12 bg-orange-500 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-100">
+                <span className="text-white font-black text-xs">Nagad</span>
+             </div>
+             <div className="pr-4">
+                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Personal</p>
+                <p className="text-xl font-black text-orange-600 tabular-nums">01831814494</p>
+             </div>
           </div>
-          <div className="flex items-center gap-2">
-             <div className="w-4 h-4 rounded-full bg-red-500 shadow-sm shadow-red-200"></div>
-             <span className="font-black text-2xl text-red-600 tracking-tighter">Rocket</span>
+
+          {/* Payment Partner Logos */}
+          <div className="flex items-center gap-8 ml-4 mt-4 md:mt-0 opacity-40 grayscale group-hover:grayscale-0 group-hover:opacity-100 transition-all">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_Logo.png" alt="Visa" className="h-4" />
+            <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-8" />
           </div>
-          <img src="https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_Logo.png" alt="Visa" className="h-5 grayscale hover:grayscale-0 transition-all" />
-          <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-10 grayscale hover:grayscale-0 transition-all" />
         </div>
+        <p className="text-center text-slate-300 font-medium text-[10px] mt-10 uppercase tracking-[0.2em]">Secure Payment powered by aamarPay Gateway</p>
       </div>
     </div>
   );

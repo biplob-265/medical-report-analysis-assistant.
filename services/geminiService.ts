@@ -28,22 +28,20 @@ Instructions:
 
   try {
     // When using generate content for text answers, use ai.models.generateContent to query GenAI with both the model name and prompt.
+    // Fix: Updated contents to follow the recommended { parts: [...] } format for multimodal input.
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview', // High intelligence for complex report analysis
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { text: prompt },
-            {
-              inlineData: {
-                data: base64Image,
-                mimeType: mimeType
-              }
+      contents: {
+        parts: [
+          { text: prompt },
+          {
+            inlineData: {
+              data: base64Image,
+              mimeType: mimeType
             }
-          ]
-        }
-      ],
+          }
+        ]
+      },
       config: {
         systemInstruction: systemInstruction,
         temperature: 0.1,
