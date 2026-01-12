@@ -7,6 +7,8 @@
     <title>MediClarify - Medical Report Assistant</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Use a reliable CDN for html2pdf.js and its dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
       body {
         font-family: 'Inter', 'Noto Sans Bengali', sans-serif;
@@ -15,6 +17,14 @@
       @media print {
         .no-print { display: none !important; }
       }
+      /* Hide scrollbar but keep functionality */
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
     </style>
   <script type="importmap">
 {
@@ -22,8 +32,7 @@
     "@google/genai": "https://esm.sh/@google/genai@^1.35.0",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3",
-    "html2pdf.js": "https://esm.sh/html2pdf.js@0.10.1"
+    "react": "https://esm.sh/react@^19.2.3"
   }
 }
 </script>
