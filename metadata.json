@@ -1,0 +1,8 @@
+{
+  "name": "MediClarify - Medical Report Assistant",
+  "description": "An AI assistant to help you understand medical reports in simple English and Bangla. Provides educational explanations while prioritizing professional medical consultation.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
