@@ -25,13 +25,15 @@ Always conclude with the exact disclaimer text provided in your instructions.
 Current requested language: {{LANGUAGE}}
 `;
 
+// Added CHAT_SYSTEM_INSTRUCTION to resolve the import error in components like LiveAudio.tsx
 export const CHAT_SYSTEM_INSTRUCTION = `
-You are a helpful medical information assistant. 
-1. Talk to the user in simple Bangla. 
-2. If they use English medical terms, explain them in brackets.
-3. NEVER provide a diagnosis or prescription. 
-4. Always suggest consulting a doctor for any specific health concerns.
-5. Be respectful and calm.
+You are a medical report explanation assistant. Your goal is to help users understand their health reports in a calm, clear, and educational manner.
+
+CRITICAL RULES:
+1. Use simple Bangla as the primary language.
+2. For any medical term, provide a simple Bangla explanation in brackets.
+3. NEVER diagnose. Use cautious language like "seems to suggest" or "is often associated with".
+4. Be respectful and professional.
 `;
 
 export const UI_STRINGS: Record<Language, any> = {
@@ -39,8 +41,6 @@ export const UI_STRINGS: Record<Language, any> = {
     title: 'MediClarify',
     subtitle: 'AI explanations for your medical reports.',
     tabAnalysis: 'Analysis',
-    tabChat: 'Chat Bot',
-    tabLive: 'Live Voice',
     tabHistory: 'History',
     tabPremium: 'Premium',
     uploadLabel: 'Upload Report (Photo)',
@@ -58,11 +58,6 @@ export const UI_STRINGS: Record<Language, any> = {
     errorTitle: 'Analysis Error',
     errorDesc: 'Could not process the report. Please ensure the photo is clear and contains readable text.',
     consultDoctor: 'Always consult a licensed physician to interpret these findings.',
-    chatPlaceholder: 'Ask a medical question...',
-    liveStart: 'Start Voice Conversation',
-    liveStop: 'Stop Conversation',
-    liveStatus: 'Connected & Listening...',
-    liveInstruction: 'You can talk to the AI now. Speak clearly about your health concerns.',
     historyTitle: 'Report History',
     emptyHistory: 'No reports saved yet.',
     delete: 'Delete',
@@ -75,14 +70,23 @@ export const UI_STRINGS: Record<Language, any> = {
     subscribe: 'Subscribe Now',
     paymentSuccess: 'Subscription Activated Successfully!',
     processingPayment: 'Redirecting to Payment Gateway...',
-    limitReached: 'Free limit reached. Please upgrade to Premium to analyze more reports.'
+    limitReached: 'Free limit reached. Please upgrade to Premium to analyze more reports.',
+    verifyBtn: 'Verify Payment',
+    verifyPlaceholder: 'Enter Transaction ID (e.g., 8N7K9L2P)',
+    verifying: 'Verifying Transaction...',
+    invalidTrx: 'Invalid Transaction ID. Please check and try again.',
+    manualTitle: 'Official Payment Channels',
+    stepGuide: 'How to Pay? (Step-by-Step Guide)',
+    chatPlaceholder: 'Ask a question about your report...',
+    liveStart: 'Start Voice Conversation',
+    liveStop: 'Stop Conversation',
+    liveStatus: 'Listening...',
+    liveInstruction: 'Speak naturally to ask questions about your medical findings.'
   },
   bn: {
     title: 'মেডি-ক্লারিফাই',
     subtitle: 'আপনার মেডিকেল রিপোর্ট সহজে বুঝে নিন।',
     tabAnalysis: 'রিপোর্ট বিশ্লেষণ',
-    tabChat: 'চ্যাট বট',
-    tabLive: 'সরাসরি কথা',
     tabHistory: 'ইতিহাস',
     tabPremium: 'প্রিমিয়াম',
     uploadLabel: 'রিপোর্ট আপলোড করুন (ছবি)',
@@ -100,11 +104,6 @@ export const UI_STRINGS: Record<Language, any> = {
     errorTitle: 'বিশ্লেষণে ত্রুটি',
     errorDesc: 'রিপোর্টটি প্রসেস করা সম্ভব হয়নি। অনুগ্রহ করে নিশ্চিত করুন যে ছবিটি পরিষ্কার এবং লেখাগুলো পড়া যাচ্ছে।',
     consultDoctor: 'ফলাফলগুলি বোঝার জন্য সর্বদা একজন নিবন্ধিত চিকিৎসকের পরামর্শ নিন।',
-    chatPlaceholder: 'স্বাস্থ্য বিষয়ক প্রশ্ন করুন...',
-    liveStart: 'ভয়েস কথোপকথন শুরু করুন',
-    liveStop: 'কথোপকথন বন্ধ করুন',
-    liveStatus: 'সংযুক্ত এবং শুনছে...',
-    liveInstruction: 'আপনি এখন সরাসরি এআই এর সাথে কথা বলতে পারেন। আপনার স্বাস্থ্য সমস্যা নিয়ে পরিষ্কারভাবে কথা বলুন।',
     historyTitle: 'রিপোর্ট ইতিহাস',
     emptyHistory: 'এখনও কোনো রিপোর্ট নেই।',
     delete: 'মুছে ফেলুন',
@@ -117,6 +116,17 @@ export const UI_STRINGS: Record<Language, any> = {
     subscribe: 'সাবস্ক্রাইব করুন',
     paymentSuccess: 'সাবস্কৃপশন সফলভাবে সক্রিয় হয়েছে!',
     processingPayment: 'পেমেন্ট গেটওয়েতে পাঠানো হচ্ছে...',
-    limitReached: 'ফ্রি লিমিট শেষ হয়েছে। আরও রিপোর্ট বিশ্লেষণের জন্য প্রিমিয়ামে আপগ্রেড করুন।'
+    limitReached: 'ফ্রি লিমিট শেষ হয়েছে। আরও রিপোর্ট বিশ্লেষণের জন্য প্রিমিয়ামে আপগ্রেড করুন।',
+    verifyBtn: 'পেমেন্ট ভেরিফাই করুন',
+    verifyPlaceholder: 'ট্রানজেকশন আইডি দিন (যেমন: 8N7K9L2P)',
+    verifying: 'ভেরিফাই করা হচ্ছে...',
+    invalidTrx: 'ভুল ট্রানজেকশন আইডি। অনুগ্রহ করে আবার চেষ্টা করুন।',
+    manualTitle: 'অফিসিয়াল পেমেন্ট চ্যানেল',
+    stepGuide: 'কীভাবে পেমেন্ট করবেন? (ধাপে ধাপে গাইড)',
+    chatPlaceholder: 'রিপোর্ট সম্পর্কে প্রশ্ন করুন...',
+    liveStart: 'কথা বলা শুরু করুন',
+    liveStop: 'কথা বলা বন্ধ করুন',
+    liveStatus: 'শুনছি...',
+    liveInstruction: 'আপনার মেডিকেল রিপোর্ট নিয়ে যেকোনো প্রশ্ন মুখে বলুন।'
   }
 };

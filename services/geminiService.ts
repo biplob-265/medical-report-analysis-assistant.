@@ -3,14 +3,16 @@ import { GoogleGenAI } from "@google/genai";
 import { SYSTEM_INSTRUCTIONS, CHAT_SYSTEM_INSTRUCTION } from "../constants";
 import { Language } from "../types";
 
-// Always use const ai = new GoogleGenAI({apiKey: process.env.API_KEY});
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Note: Create a new GoogleGenAI instance right before making an API call to ensure it always uses the most up-to-date API key.
 
 export const analyzeReport = async (
   base64Image: string, 
   mimeType: string, 
   lang: Language
 ) => {
+  // Always use a new GoogleGenAI instance for requests.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
   const prompt = `Analyze this medical report image. 
 Language Requirement: Use simple Bangla (সহজ বাংলা). 
 Term Formatting: Every English medical term MUST be followed by a Bangla explanation in brackets. 
@@ -62,12 +64,17 @@ Always conclude with the mandatory disclaimer text.`;
   }
 };
 
+// Added startChat to resolve the missing export error in ChatBot.tsx
 export const startChat = (lang: Language) => {
+  // Always use a new GoogleGenAI instance for requests.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+  const systemInstruction = CHAT_SYSTEM_INSTRUCTION + "\nRequested language: " + (lang === 'en' ? 'English' : 'Bangla');
+  
   return ai.chats.create({
-    model: 'gemini-3-pro-preview',
+    model: 'gemini-3-flash-preview',
     config: {
-      systemInstruction: CHAT_SYSTEM_INSTRUCTION,
-      temperature: 0.7,
-    }
+      systemInstruction: systemInstruction,
+    },
   });
 };
