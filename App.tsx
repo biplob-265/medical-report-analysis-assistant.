@@ -131,12 +131,12 @@ const App: React.FC = () => {
     setDownloadStatus('preparing');
     
     try {
-      // Small buffer for UI response
-      await new Promise(r => setTimeout(r, 800));
+      // Allow progress UI to render
+      await new Promise(r => setTimeout(r, 1000));
       
       const html2pdfLib = (window as any).html2pdf;
-      if (!html2pdfLib) {
-        throw new Error("Library not loaded");
+      if (!html2pdfLib || typeof html2pdfLib !== 'function') {
+        throw new Error("html2pdf library is not available or not a function. Check your internet connection or script tags.");
       }
 
       setDownloadStatus('capturing');
@@ -145,11 +145,16 @@ const App: React.FC = () => {
         margin: [15, 15, 15, 15],
         filename: `MediClarify_Report_${Date.now()}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, logging: false },
+        html2canvas: { 
+          scale: 2, 
+          useCORS: true, 
+          letterRendering: true,
+          logging: false 
+        },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
 
-      // Direct functional call to the global library
+      // Ensure the library call is robust
       const worker = html2pdfLib().set(opt).from(element).toPdf();
       
       await worker.get('pdf').then(() => {
@@ -160,7 +165,7 @@ const App: React.FC = () => {
     } catch (err: any) {
       console.error("PDF download error:", err);
       setDownloadStatus('error');
-      setError(lang === 'bn' ? "পিডিএফ ডাউনলোড করতে সমস্যা হয়েছে।" : "Could not generate PDF. Please try again.");
+      setError(lang === 'bn' ? "পিডিএফ তৈরি করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।" : "PDF generation failed. Please refresh and try again.");
     } finally {
       setIsDownloading(false);
     }
@@ -192,9 +197,9 @@ const App: React.FC = () => {
 
   const getProgressMessage = () => {
     switch (downloadStatus) {
-      case 'preparing': return lang === 'bn' ? 'রিপোর্ট প্রস্তুত করা হচ্ছে...' : 'Preparing report...';
-      case 'capturing': return lang === 'bn' ? 'লেআউট তৈরি করা হচ্ছে...' : 'Capturing layout...';
-      case 'saving': return lang === 'bn' ? 'ফাইল সংরক্ষণ করা হচ্ছে...' : 'Saving document...';
+      case 'preparing': return lang === 'bn' ? 'রিপোর্ট প্রস্তুত হচ্ছে...' : 'Preparing content...';
+      case 'capturing': return lang === 'bn' ? 'ফাইল তৈরি হচ্ছে...' : 'Capturing layout...';
+      case 'saving': return lang === 'bn' ? 'সংরক্ষণ করা হচ্ছে...' : 'Finalizing document...';
       default: return '';
     }
   };
@@ -204,26 +209,26 @@ const App: React.FC = () => {
       <Container>
         {/* PDF Progress Overlay */}
         {isDownloading && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-white/90 backdrop-blur-lg animate-in fade-in duration-300">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-white/95 backdrop-blur-xl animate-in fade-in duration-300">
             <div className="text-center p-12 max-w-sm w-full">
-              <div className="relative mb-10 inline-block">
-                <div className="w-24 h-24 rounded-full border-4 border-slate-100 border-t-blue-600 animate-spin"></div>
+              <div className="relative mb-12 inline-block">
+                <div className="w-28 h-28 rounded-full border-4 border-slate-100 border-t-blue-600 animate-spin"></div>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <svg className="w-10 h-10 text-blue-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-12 h-12 text-blue-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
               </div>
-              <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tighter">
+              <h2 className="text-4xl font-black text-slate-900 mb-4 tracking-tighter">
                 {lang === 'bn' ? 'পিডিএফ তৈরি হচ্ছে' : 'Generating PDF'}
               </h2>
-              <p className="text-blue-600 font-black text-lg">
+              <p className="text-blue-600 font-black text-xl mb-10">
                 {getProgressMessage()}
               </p>
-              <div className="mt-8 w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                <div className={`h-full bg-blue-600 transition-all duration-1000 ease-out ${
-                  downloadStatus === 'preparing' ? 'w-1/3' :
-                  downloadStatus === 'capturing' ? 'w-2/3' :
+              <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden shadow-inner">
+                <div className={`h-full bg-blue-600 transition-all duration-1000 ease-out shadow-lg ${
+                  downloadStatus === 'preparing' ? 'w-1/4' :
+                  downloadStatus === 'capturing' ? 'w-3/4' :
                   'w-full'
                 }`}></div>
               </div>
@@ -233,33 +238,33 @@ const App: React.FC = () => {
 
         {/* Download Confirmation Modal */}
         {showDownloadConfirm && !isDownloading && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-            <div className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-300 border-4 border-blue-50">
-              <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mb-8 mx-auto">
-                <svg className="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-300">
+            <div className="bg-white rounded-[3rem] p-12 max-w-md w-full shadow-[0_25px_100px_-15px_rgba(0,0,0,0.3)] animate-in zoom-in-95 duration-300 border-4 border-white">
+              <div className="w-24 h-24 bg-blue-50 rounded-[2rem] flex items-center justify-center mb-10 mx-auto">
+                <svg className="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
-              <h3 className="text-3xl font-black text-slate-900 text-center mb-4 tracking-tight">
-                {lang === 'bn' ? 'রিপোর্ট ডাউনলোড করুন' : 'Download Report'}
+              <h3 className="text-4xl font-black text-slate-900 text-center mb-6 tracking-tight">
+                {lang === 'bn' ? 'রিপোর্ট ডাউনলোড করুন' : 'Download Analysis'}
               </h3>
-              <p className="text-slate-500 text-center font-bold text-lg leading-relaxed mb-10 px-4">
+              <p className="text-slate-500 text-center font-bold text-xl leading-relaxed mb-12 px-2">
                 {lang === 'bn' 
                   ? 'আপনার রিপোর্টের সারসংক্ষেপ এবং ব্যাখ্যাসহ একটি প্রফেশনাল পিডিএফ ফাইল তৈরি করা হবে।' 
-                  : 'A high-quality PDF containing your analysis, findings, and medical advice will be generated.'}
+                  : 'We will generate a high-quality PDF containing all findings and explanations for your records.'}
               </p>
               <div className="flex gap-4">
                 <button
                   onClick={() => setShowDownloadConfirm(false)}
-                  className="flex-1 py-5 bg-slate-100 text-slate-600 font-black text-xl rounded-2xl hover:bg-slate-200 transition-all active:scale-[0.97]"
+                  className="flex-1 py-6 bg-slate-100 text-slate-600 font-black text-xl rounded-2xl hover:bg-slate-200 transition-all active:scale-[0.97]"
                 >
                   {lang === 'bn' ? 'বাতিল' : 'Cancel'}
                 </button>
                 <button
                   onClick={handleDownloadPDF}
-                  className="flex-1 py-5 bg-blue-600 text-white font-black text-xl rounded-2xl hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all active:scale-[0.97]"
+                  className="flex-1 py-6 bg-blue-600 text-white font-black text-xl rounded-2xl hover:bg-blue-700 shadow-2xl shadow-blue-200 transition-all active:scale-[0.97]"
                 >
-                  {lang === 'bn' ? 'নিশ্চিত করুন' : 'Confirm'}
+                  {lang === 'bn' ? 'ডাউনলোড' : 'Download'}
                 </button>
               </div>
             </div>
@@ -370,28 +375,28 @@ const App: React.FC = () => {
                   </div>
 
                   <div id="report-content" className="bg-white">
-                    {/* PDF-Only Header */}
-                    <div className="hidden print:block border-b-8 border-blue-600 pb-10 mb-10">
+                    {/* PDF Header (Hidden in app) */}
+                    <div className="hidden print:block border-b-8 border-blue-600 pb-10 mb-12">
                       <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-4">
-                           <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center">
-                              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="flex items-center gap-5">
+                           <div className="w-20 h-20 bg-blue-600 rounded-[2rem] flex items-center justify-center shadow-xl shadow-blue-200">
+                              <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                               </svg>
                            </div>
                            <div>
-                              <h1 className="text-4xl font-black text-slate-900 leading-none">MediClarify</h1>
-                              <p className="text-blue-600 font-bold uppercase tracking-[0.2em] text-[10px] mt-1">Medical Report Assistant</p>
+                              <h1 className="text-5xl font-black text-slate-900 tracking-tighter leading-none">MediClarify</h1>
+                              <p className="text-blue-600 font-black uppercase tracking-[0.3em] text-xs mt-2">AI Medical Report Assistant</p>
                            </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-slate-900 font-black text-lg">{new Date().toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Analysis Ref: {Math.random().toString(36).substr(2, 9).toUpperCase()}</p>
+                          <p className="text-slate-900 font-black text-2xl">{new Date().toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                          <p className="text-slate-400 text-sm font-black uppercase tracking-widest mt-1">Ref: {Math.random().toString(36).substr(2, 9).toUpperCase()}</p>
                         </div>
                       </div>
                     </div>
 
-                    <div className="prose prose-slate max-w-none space-y-8">
+                    <div className="prose prose-slate max-w-none space-y-10">
                       {result.split('###').filter(s => s.trim()).map((section, idx) => {
                         const lines = section.split('\n').filter(l => l.trim());
                         if (lines.length === 0) return null;
@@ -401,14 +406,14 @@ const App: React.FC = () => {
                         const isDisclaimer = title.toLowerCase().includes('disclaimer') || title.toLowerCase().includes('সতর্কতা');
                         
                         return (
-                          <div key={idx} className={`rounded-3xl ${isDisclaimer ? 'bg-slate-50 border-2 border-slate-100 p-8 mt-12' : 'mb-8'}`}>
-                            <h3 className={`text-3xl font-black mb-4 flex items-center gap-3 ${isDisclaimer ? 'text-slate-700' : 'text-blue-800'}`}>
-                              {!isDisclaimer && <span className="w-2 h-8 bg-blue-600 rounded-full"></span>}
+                          <div key={idx} className={`rounded-[2.5rem] transition-all ${isDisclaimer ? 'bg-slate-50 border-4 border-slate-100 p-10 mt-16 shadow-inner' : 'mb-10'}`}>
+                            <h3 className={`text-4xl font-black mb-6 flex items-center gap-4 ${isDisclaimer ? 'text-slate-800' : 'text-blue-900'}`}>
+                              {!isDisclaimer && <span className="w-3 h-10 bg-blue-600 rounded-full shadow-lg shadow-blue-200"></span>}
                               {title.trim()}
                             </h3>
-                            <div className={`text-2xl font-medium leading-relaxed ${isDisclaimer ? 'text-slate-500 text-xl' : 'text-slate-800'}`}>
+                            <div className={`text-2xl font-bold leading-relaxed space-y-4 ${isDisclaimer ? 'text-slate-500 text-xl font-medium' : 'text-slate-800'}`}>
                               {contentLines.map((line, lIdx) => (
-                                <p key={lIdx} className="mb-4">{line.trim()}</p>
+                                <p key={lIdx}>{line.trim()}</p>
                               ))}
                             </div>
                           </div>
@@ -417,11 +422,11 @@ const App: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="mt-16 flex flex-col sm:flex-row gap-6 print:hidden">
+                  <div className="mt-20 flex flex-col sm:flex-row gap-8 print:hidden">
                     <button
                       onClick={initiateDownload}
                       disabled={isDownloading}
-                      className="flex-[2] py-8 bg-blue-600 text-white font-black text-2xl rounded-3xl hover:bg-blue-700 shadow-2xl shadow-blue-200 transition-all active:scale-[0.97] flex items-center justify-center gap-5 disabled:opacity-50"
+                      className="flex-[2] py-8 bg-blue-600 text-white font-black text-3xl rounded-[2.5rem] hover:bg-blue-700 shadow-[0_20px_50px_-10px_rgba(37,99,235,0.4)] transition-all active:scale-[0.97] flex items-center justify-center gap-6 disabled:opacity-50"
                     >
                       <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -430,7 +435,7 @@ const App: React.FC = () => {
                     </button>
                     <button
                       onClick={handleReset}
-                      className="flex-1 py-8 bg-slate-900 text-white font-black text-2xl rounded-3xl hover:bg-slate-800 transition-all shadow-2xl active:scale-[0.97]"
+                      className="flex-1 py-8 bg-slate-900 text-white font-black text-3xl rounded-[2.5rem] hover:bg-slate-800 transition-all shadow-2xl active:scale-[0.97]"
                     >
                       {s.btnReset}
                     </button>
@@ -455,7 +460,7 @@ const App: React.FC = () => {
           <div className="space-y-6 animate-in fade-in duration-700">
             <h2 className="text-4xl font-black text-slate-900 mb-12 px-2 tracking-tighter">{s.historyTitle}</h2>
             {history.length === 0 ? (
-              <Card className="p-32 text-center text-slate-300 bg-white border-dashed border-4 border-slate-100 rounded-[3rem]">
+              <Card className="p-32 text-center text-slate-300 bg-white border-dashed border-4 border-slate-100 rounded-[3.5rem]">
                 <div className="mb-8 opacity-10 flex justify-center">
                   <svg className="w-32 h-32" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -465,7 +470,7 @@ const App: React.FC = () => {
               </Card>
             ) : (
               history.map((item) => (
-                <Card key={item.id} className="p-8 flex items-center gap-10 hover:border-blue-500 hover:shadow-xl transition-all group relative overflow-hidden bg-white rounded-3xl border-2 border-slate-50">
+                <Card key={item.id} className="p-8 flex items-center gap-10 hover:border-blue-500 hover:shadow-2xl transition-all group relative overflow-hidden bg-white rounded-[2.5rem] border-2 border-slate-50">
                   <div className="w-32 h-32 rounded-3xl overflow-hidden border-8 border-slate-50 shadow-2xl flex-shrink-0 bg-slate-100">
                     <img src={item.preview} alt="Report" className="w-full h-full object-cover group-hover:scale-125 transition-transform duration-1000" />
                   </div>
