@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Language, SubscriptionStatus } from '../types';
 import { UI_STRINGS } from '../constants';
 import { Card } from './Layout';
 import { verifyTransaction } from '../services/verificationService';
+import { Confetti } from './Confetti';
 
 interface SubscriptionProps {
   lang: Language;
@@ -22,8 +23,18 @@ const Subscription: React.FC<SubscriptionProps> = ({ lang, onSuccess, status, on
   const [copiedNumber, setCopiedNumber] = useState<string | null>(null);
   const [automatedStep, setAutomatedStep] = useState(0);
   const [verificationStage, setVerificationStage] = useState(0);
+  const [showCelebration, setShowCelebration] = useState(false);
 
   const s = UI_STRINGS[lang];
+
+  // Trigger celebration effect when subscription becomes active
+  useEffect(() => {
+    if (status.isPremium) {
+      setShowCelebration(true);
+      const timer = setTimeout(() => setShowCelebration(false), 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [status.isPremium]);
 
   const automatedSteps = [
     { en: 'Connecting to Secure Gateway...', bn: 'সিকিউর গেটওয়ের সাথে সংযুক্ত হচ্ছে...' },
@@ -74,7 +85,6 @@ const Subscription: React.FC<SubscriptionProps> = ({ lang, onSuccess, status, on
     setView('verifying');
     setVerificationStage(0);
 
-    // Simulated multi-stage progress for realism
     const progressInterval = setInterval(() => {
       setVerificationStage(prev => (prev < 3 ? prev + 1 : prev));
     }, 800);
@@ -104,29 +114,19 @@ const Subscription: React.FC<SubscriptionProps> = ({ lang, onSuccess, status, on
 
   if (status.isPremium) {
     return (
-      <div className="relative overflow-hidden py-12 px-4 min-h-[600px] flex items-center justify-center animate-in fade-in duration-1000">
-        <div className="absolute inset-0 pointer-events-none">
-          {[...Array(40)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-2 h-2 rounded-full animate-bounce opacity-40"
-              style={{
-                backgroundColor: ['#10b981', '#3b82f6', '#fbbf24', '#f472b6', '#a855f7'][i % 5],
-                top: `${Math.random() * 100}%`,
-                left: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 3}s`,
-                animationDuration: `${0.5 + Math.random() * 2.5}s`
-              }}
-            />
-          ))}
-        </div>
+      <div className="relative py-12 px-4 min-h-[700px] flex items-center justify-center animate-in fade-in duration-1000">
+        {showCelebration && <Confetti />}
+        
+        <Card className="max-w-xl w-full p-12 text-center bg-white border-4 border-green-50 shadow-[0_50px_100px_-20px_rgba(16,185,129,0.25)] relative z-10 rounded-[3.5rem] overflow-visible">
+          {/* Floating decorative elements */}
+          <div className="absolute -top-10 -left-10 w-24 h-24 bg-yellow-400 rounded-full blur-3xl opacity-20 animate-pulse"></div>
+          <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-blue-400 rounded-full blur-3xl opacity-20 animate-pulse delay-700"></div>
 
-        <Card className="max-w-xl w-full p-12 text-center bg-white border-4 border-green-50 shadow-[0_50px_100px_-20px_rgba(16,185,129,0.25)] relative z-10 rounded-[3.5rem]">
           <div className="relative mb-12 inline-block">
             <div className="absolute inset-0 bg-green-100 rounded-full animate-ping opacity-30"></div>
-            <div className="w-32 h-32 bg-green-600 rounded-full flex items-center justify-center relative shadow-2xl shadow-green-200">
+            <div className="w-32 h-32 bg-green-600 rounded-full flex items-center justify-center relative shadow-2xl shadow-green-200 animate-in zoom-in duration-500">
               <svg 
-                className="w-16 h-16 text-white animate-in zoom-in-50 duration-500 delay-300" 
+                className="w-16 h-16 text-white" 
                 fill="none" 
                 stroke="currentColor" 
                 viewBox="0 0 24 24"
@@ -136,36 +136,35 @@ const Subscription: React.FC<SubscriptionProps> = ({ lang, onSuccess, status, on
                   strokeLinejoin="round" 
                   strokeWidth="3.5" 
                   d="M5 13l4 4L19 7" 
-                  className="animate-[draw_0.6s_ease-out_forwards]"
-                  style={{ strokeDasharray: 50, strokeDashoffset: 50 }}
+                  className="animate-draw"
                 />
               </svg>
             </div>
           </div>
 
           <div className="space-y-6">
-            <div className="inline-block px-6 py-2 bg-yellow-100 text-yellow-700 rounded-full font-black text-sm uppercase tracking-widest mb-2 border-2 border-yellow-200 shadow-sm animate-pulse">
+            <div className="inline-block px-6 py-2 bg-yellow-100 text-yellow-700 rounded-full font-black text-sm uppercase tracking-widest mb-2 border-2 border-yellow-200 shadow-sm animate-bounce">
               ★ Premium Active
             </div>
             
-            <h2 className="text-5xl font-black text-slate-900 tracking-tight leading-none">
+            <h2 className="text-5xl font-black text-slate-900 tracking-tight leading-none animate-in slide-in-from-bottom-2 duration-700">
               {s.paymentSuccess}
             </h2>
             
-            <p className="text-slate-500 text-2xl font-bold leading-relaxed max-w-sm mx-auto">
+            <p className="text-slate-500 text-2xl font-bold leading-relaxed max-w-sm mx-auto animate-in fade-in duration-1000 delay-300">
               {lang === 'bn' 
                 ? `অভিনন্দন! আপনার ${status.plan === 'yearly' ? 'বার্ষিক' : 'মাসিক'} প্রিমিয়াম মেম্বারশিপ এখন সচল হয়েছে।` 
                 : `Congratulations! Your ${status.plan} Premium membership is now fully active.`}
             </p>
 
-            <div className="pt-8 grid grid-cols-2 gap-4">
-              <div className="bg-slate-50 p-6 rounded-3xl border-2 border-slate-100">
+            <div className="pt-8 grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-500">
+              <div className="bg-slate-50 p-6 rounded-3xl border-2 border-slate-100 hover:border-blue-100 transition-colors">
                 <p className="text-xs text-slate-400 font-black uppercase tracking-widest mb-1">
                   {lang === 'bn' ? 'প্ল্যান' : 'Current Plan'}
                 </p>
                 <p className="text-2xl font-black text-slate-800 capitalize">{status.plan}</p>
               </div>
-              <div className="bg-slate-50 p-6 rounded-3xl border-2 border-slate-100">
+              <div className="bg-slate-50 p-6 rounded-3xl border-2 border-slate-100 hover:border-blue-100 transition-colors">
                 <p className="text-xs text-slate-400 font-black uppercase tracking-widest mb-1">
                   {lang === 'bn' ? 'মেয়াদ শেষ হবে' : 'Expires On'}
                 </p>
@@ -175,12 +174,12 @@ const Subscription: React.FC<SubscriptionProps> = ({ lang, onSuccess, status, on
               </div>
             </div>
 
-            <div className="pt-10">
+            <div className="pt-10 animate-in fade-in duration-1000 delay-700">
               <button
                 onClick={onReturn}
-                className="w-full py-6 bg-blue-600 text-white font-black text-2xl rounded-[2.5rem] hover:bg-blue-700 shadow-2xl shadow-blue-200 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-4"
+                className="w-full py-6 bg-blue-600 text-white font-black text-2xl rounded-[2.5rem] hover:bg-blue-700 shadow-2xl shadow-blue-200 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-4 group"
               >
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-8 h-8 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
                 {lang === 'bn' ? 'রিপোর্ট বিশ্লেষণ শুরু করুন' : 'Start Analyzing Now'}
@@ -190,6 +189,11 @@ const Subscription: React.FC<SubscriptionProps> = ({ lang, onSuccess, status, on
         </Card>
 
         <style>{`
+          .animate-draw {
+            stroke-dasharray: 50;
+            stroke-dashoffset: 50;
+            animation: draw 0.8s ease-out 0.5s forwards;
+          }
           @keyframes draw {
             to { stroke-dashoffset: 0; }
           }
@@ -403,7 +407,6 @@ const Subscription: React.FC<SubscriptionProps> = ({ lang, onSuccess, status, on
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-5xl mx-auto mb-16">
-                {/* bKash Card */}
                 <button 
                   onClick={() => copyToClipboard('01767515374')}
                   className="w-full bg-white p-12 rounded-[3rem] border-4 border-pink-50 shadow-2xl flex flex-col items-center text-center group hover:border-pink-500 transition-all relative overflow-hidden active:scale-[0.98]"
@@ -422,7 +425,6 @@ const Subscription: React.FC<SubscriptionProps> = ({ lang, onSuccess, status, on
                   </div>
                 </button>
 
-                {/* Nagad Card */}
                 <button 
                   onClick={() => copyToClipboard('01831814494')}
                   className="w-full bg-white p-12 rounded-[3rem] border-4 border-orange-50 shadow-2xl flex flex-col items-center text-center group hover:border-orange-500 transition-all relative overflow-hidden active:scale-[0.98]"

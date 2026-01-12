@@ -163,7 +163,8 @@ const LiveAudio: React.FC<{ lang: Language }> = ({ lang }) => {
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
           },
-          systemInstruction: CHAT_SYSTEM_INSTRUCTION,
+          // Format system instruction for specific language
+          systemInstruction: CHAT_SYSTEM_INSTRUCTION.replace('{{LANGUAGE}}', lang === 'en' ? 'English' : 'Bangla'),
         },
       });
 

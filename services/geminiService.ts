@@ -3,8 +3,7 @@ import { GoogleGenAI } from "@google/genai";
 import { SYSTEM_INSTRUCTIONS, CHAT_SYSTEM_INSTRUCTION } from "../constants";
 import { Language } from "../types";
 
-// Note: Create a new GoogleGenAI instance right before making an API call to ensure it always uses the most up-to-date API key.
-
+// Analyze medical report image using Gemini Pro
 export const analyzeReport = async (
   base64Image: string, 
   mimeType: string, 
@@ -64,13 +63,10 @@ Always conclude with the mandatory disclaimer text.`;
   }
 };
 
-// Added startChat to resolve the missing export error in ChatBot.tsx
+// Start a chat session for medical queries using Gemini Flash
 export const startChat = (lang: Language) => {
-  // Always use a new GoogleGenAI instance for requests.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-  const systemInstruction = CHAT_SYSTEM_INSTRUCTION + "\nRequested language: " + (lang === 'en' ? 'English' : 'Bangla');
-  
+  const systemInstruction = CHAT_SYSTEM_INSTRUCTION.replace('{{LANGUAGE}}', lang === 'en' ? 'English' : 'Bangla');
   return ai.chats.create({
     model: 'gemini-3-flash-preview',
     config: {

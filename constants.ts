@@ -25,16 +25,10 @@ Always conclude with the exact disclaimer text provided in your instructions.
 Current requested language: {{LANGUAGE}}
 `;
 
-// Added CHAT_SYSTEM_INSTRUCTION to resolve the import error in components like LiveAudio.tsx
-export const CHAT_SYSTEM_INSTRUCTION = `
-You are a medical report explanation assistant. Your goal is to help users understand their health reports in a calm, clear, and educational manner.
-
-CRITICAL RULES:
-1. Use simple Bangla as the primary language.
-2. For any medical term, provide a simple Bangla explanation in brackets.
-3. NEVER diagnose. Use cautious language like "seems to suggest" or "is often associated with".
-4. Be respectful and professional.
-`;
+export const CHAT_SYSTEM_INSTRUCTION = `You are a friendly and helpful medical assistant for MediClarify. 
+Your goal is to explain medical concepts simply and help with health-related queries.
+CRITICAL: Always use the language requested: {{LANGUAGE}}.
+Always include a disclaimer that you are an AI and not a doctor.`;
 
 export const UI_STRINGS: Record<Language, any> = {
   en: {
@@ -77,11 +71,11 @@ export const UI_STRINGS: Record<Language, any> = {
     invalidTrx: 'Invalid Transaction ID. Please check and try again.',
     manualTitle: 'Official Payment Channels',
     stepGuide: 'How to Pay? (Step-by-Step Guide)',
-    chatPlaceholder: 'Ask a question about your report...',
-    liveStart: 'Start Voice Conversation',
-    liveStop: 'Stop Conversation',
+    chatPlaceholder: 'Ask anything about your report...',
     liveStatus: 'Listening...',
-    liveInstruction: 'Speak naturally to ask questions about your medical findings.'
+    liveStart: 'Start Voice Chat',
+    liveInstruction: 'Talk to our AI assistant in real-time about your health.',
+    liveStop: 'Stop Voice Chat'
   },
   bn: {
     title: 'মেডি-ক্লারিফাই',
@@ -123,10 +117,10 @@ export const UI_STRINGS: Record<Language, any> = {
     invalidTrx: 'ভুল ট্রানজেকশন আইডি। অনুগ্রহ করে আবার চেষ্টা করুন।',
     manualTitle: 'অফিসিয়াল পেমেন্ট চ্যানেল',
     stepGuide: 'কীভাবে পেমেন্ট করবেন? (ধাপে ধাপে গাইড)',
-    chatPlaceholder: 'রিপোর্ট সম্পর্কে প্রশ্ন করুন...',
-    liveStart: 'কথা বলা শুরু করুন',
-    liveStop: 'কথা বলা বন্ধ করুন',
+    chatPlaceholder: 'রিপোর্ট সম্পর্কে কিছু জিজ্ঞাসা করুন...',
     liveStatus: 'শুনছি...',
-    liveInstruction: 'আপনার মেডিকেল রিপোর্ট নিয়ে যেকোনো প্রশ্ন মুখে বলুন।'
+    liveStart: 'ভয়েস চ্যাট শুরু করুন',
+    liveInstruction: 'আপনার স্বাস্থ্য নিয়ে রিয়েল-টাইমে এআইয়ের সাথে কথা বলুন।',
+    liveStop: 'ভয়েস চ্যাট বন্ধ করুন'
   }
 };
